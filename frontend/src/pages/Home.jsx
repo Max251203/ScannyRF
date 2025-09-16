@@ -1,26 +1,53 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import heroImg from '../assets/images/hero-mascot.png'
 import HowItWorks from '../sections/HowItWorks.jsx'
 import Examples from '../sections/Examples.jsx'
 import Pricing from '../sections/Pricing.jsx'
 
+// «Проще простого»
+import f1 from '../assets/images/feature-1.png'
+import f2 from '../assets/images/feature-2.png'
+import f3 from '../assets/images/feature-3.png'
+
+// «Всегда под рукой» картинки
+import p1 from '../assets/images/pocket-1.png'
+import p2 from '../assets/images/pocket-2.png'
+import p3 from '../assets/images/pocket-3.png'
+
 export default function Home() {
   const loc = useLocation()
   const nav = useNavigate()
+  const [activePocket, setActivePocket] = useState(0)
 
-  // При переходе из шапки/футера прокручиваем к нужному блоку
   useEffect(() => {
     const id = loc.state && loc.state.scrollTo
     if (id) {
       setTimeout(() => {
         const el = document.getElementById(id)
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        // сброс state, чтобы повторные клики работали
         nav('.', { replace: true, state: null })
       }, 0)
     }
   }, [loc.state, nav])
+
+  const pocketData = [
+    {
+      title: 'Телефон, планшет, компьютер — без разницы',
+      desc: 'Открой в браузере и работай с документами: подписи и печати доступны отовсюду.',
+      img: p1,
+    },
+    {
+      title: 'Надёжное хранилище печатей',
+      desc: 'Загрузите один раз — дальше всё хранится безопасно и открывается в любое время.',
+      img: p2,
+    },
+    {
+      title: 'Не храним ваши документы',
+      desc: 'Для безопасности удаляем любой подписанный документ через 24 часа — без следов.',
+      img: p3,
+    },
+  ]
 
   return (
     <>
@@ -38,46 +65,29 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Три шага */}
-      <section className="section" id="steps">
-        <div className="container">
-          <div className="step-grid">
-            <div className="card">
-              <h3>Загружай документ</h3>
-              <p className="lead">PDF, Word, Excel, скан или фото — убери лишние страницы и добавь нужные за пару секунд.</p>
-            </div>
-            <div className="card">
-              <h3>Поставь подпись и печать</h3>
-              <p className="lead">Подойдёт даже снимок с камеры. Загрузи фото — сервис сам очистит фон и сохранит все детали и оттенки.</p>
-            </div>
-            <div className="card">
-              <h3>Скачай PDF или JPG</h3>
-              <p className="lead">Готово!</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Как работает (видео) */}
+      {/* Простой процесс */}
       <HowItWorks />
 
-      {/* Примеры документов: круг + бегущая строка */}
+      {/* Какой результат */}
       <Examples />
 
-      {/* Блок преимуществ «Проще простого» */}
+      {/* Проще простого */}
       <section className="section features">
         <div className="container">
           <h2>Проще простого</h2>
-          <div className="step-grid">
-            <div className="card">
+          <div className="features-row">
+            <div className="feature">
+              <img className="feature-pic" src={f1} alt="" />
               <h3>Чистая подпись и печать</h3>
               <p className="lead">Загрузи снимок с телефона, а сервис аккуратно удалит фон без потери качества и оттенков.</p>
             </div>
-            <div className="card">
+            <div className="feature">
+              <img className="feature-pic" src={f2} alt="" />
               <h3>Пропорции под контролем</h3>
               <p className="lead">Печать автоматически принимает стандартный диаметр, подпись — регулируй и вращай в пару кликов.</p>
             </div>
-            <div className="card">
+            <div className="feature">
+              <img className="feature-pic" src={f3} alt="" />
               <h3>Собери всё в один файл</h3>
               <p className="lead">Подойдут DOCX, JPG/PNG и PDF. Переставляй, удаляй, добавляй — потом скачай одним PDF.</p>
             </div>
@@ -85,28 +95,28 @@ export default function Home() {
         </div>
       </section>
 
-      {/* «Все подписи и печати — всегда под рукой» */}
+      {/* Всегда под рукой */}
       <section className="section pocket">
         <div className="container pocket-grid">
-          <div>
+          <div className="pocket-list">
             <h2>Все подписи и печати — всегда под рукой</h2>
-            <ul className="bullet">
-              <li>
-                <h4>Телефон, планшет, компьютер — без разницы</h4>
-                <p>Открой в браузере и работай с документами: подписи и печати доступны отовсюду.</p>
-              </li>
-              <li>
-                <h4>Надёжное хранилище печатей</h4>
-                <p>Загрузите один раз — дальше всё хранится безопасно и открывается в любое время.</p>
-              </li>
-              <li>
-                <h4>Не храним ваши документы</h4>
-                <p>Для безопасности удаляем любой подписанный документ через 24 часа — без следов.</p>
-              </li>
+            <ul className="num-list">
+              {pocketData.map((it, i) => (
+                <li key={i} className={i === activePocket ? 'active' : ''}>
+                  <button className="num-item" onClick={() => setActivePocket(i)}>
+                    <span className="num">{i + 1}</span>
+                    <span className="title">{it.title}</span>
+                  </button>
+                  <div className="num-desc" aria-hidden={i !== activePocket}>
+                    {it.desc}
+                  </div>
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="pocket-illu" aria-hidden="true">
-            {/* место под иллюстрацию маскота */}
+          <div className="pocket-illu">
+            {/* ключ — чтобы срабатывать плавное появление */}
+            <img key={activePocket} className="fade-in" src={pocketData[activePocket].img} alt="" />
           </div>
         </div>
       </section>

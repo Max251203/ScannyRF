@@ -37,7 +37,6 @@ export default function Header() {
 
         <div className="actions">
           <Link to="/profile">Вход</Link>
-          <Link to="/editor" className="btn">Добавить документ</Link>
         </div>
       </div>
     </header>
