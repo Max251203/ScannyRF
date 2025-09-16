@@ -37,12 +37,20 @@ a{color:inherit}
 .btn:hover{filter:brightness(.95)}
 .btn-lite{background:#fff;color:var(--accent);border:1px solid var(--accent)}
 
-/* hero */
+/* hero (уменьшена высота, картинка выровнена по верхнему краю текста) */
 .hero{background:var(--sage)}
-.hero-inner{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;padding:64px 0}
-.hero h1{font-family:"Ermilov",inherit;font-size:44px;line-height:1.1;margin:0 0 16px}
-.hero p{font-size:18px;margin:0 0 24px;max-width:560px}
-.hero .art{display:flex;align-items:center;justify-content:center}
+.hero-inner{
+  display:grid;grid-template-columns:1.1fr .9fr;gap:24px;
+  padding:40px 0;                 /* было 64px */
+  align-items:flex-start;          /* верхнее выравнивание двух колонок */
+}
+.hero h1{font-family:"Ermilov",inherit;font-size:44px;line-height:1.1;margin:0 0 14px}
+.hero p{font-size:18px;margin:0 0 20px;max-width:560px}
+.hero .art{display:flex;align-items:flex-start;justify-content:center}
+.hero .art img{
+  max-height:320px;               /* ограничили высоту изображения */
+  height:auto;object-fit:contain;
+}
 
 /* ПРОСТОЙ ПРОЦЕСС — шахматные ряды с фикс. высотой */
 .how-rows{display:flex;flex-direction:column;gap:64px;margin-top:16px}
@@ -67,18 +75,23 @@ a{color:inherit}
   font-weight:800;margin-bottom:10px;border:1px solid #00000014;
 }
 
-/* КАКОЙ РЕЗУЛЬТАТ — большой овал и 3D-карусель */
+/* КАКОЙ РЕЗУЛЬТАТ — чуть ниже по высоте, меньше отступ между текстом и каруселью */
 .examples .ellipse{
   background:var(--accent); color:#fff; border-radius:999px;
-  min-height:780px; display:flex; align-items:center; justify-content:center;
-  padding:24px 0; overflow:hidden;
+  min-height:680px;                 /* было 780px */
+  display:flex; align-items:center; justify-content:center;
+  padding:12px 0;                   /* было 24px */
+  overflow:hidden;
 }
-.ellipse-inner{width:min(1100px,96%); text-align:center; padding:12px 0}
+.ellipse-inner{width:min(1100px,96%); text-align:center; padding:8px 0} /* было 12px */
 .ellipse-title{font-family:"Ermilov";font-size:32px;margin:0}
-.ellipse-sub{max-width:720px;margin:8px auto 24px}
+.ellipse-sub{max-width:720px;margin:6px auto 12px}        /* было 8px auto 24px */
 
-.carousel3d{height:520px; display:flex; align-items:center; justify-content:center;
-  perspective:1000px; transform-style:preserve-3d;}
+.carousel3d{
+  height:480px;                     /* было 520px */
+  display:flex; align-items:center; justify-content:center;
+  perspective:1000px; transform-style:preserve-3d;
+}
 .stage{
   position:relative; margin:auto; transform-style:preserve-3d; transform:rotateX(-10deg);
 }
@@ -110,7 +123,6 @@ a{color:inherit}
 }
 .viewer-nav.prev{left:24px}
 .viewer-nav.next{right:24px}
-/* вылет карточки */
 @keyframes popIn {
   0% { transform: scale(.85) translateY(12px); opacity: .0 }
   60% { transform: scale(1.02) }
@@ -118,7 +130,7 @@ a{color:inherit}
 }
 .pop-in { animation: popIn .32s ease-out both }
 
-/* ПРОЩЕ ПРОСТОГО — тёмный фон, карточки по горизонтали, картинка сверху */
+/* ПРОЩЕ ПРОСТОГО — тёмный фон */
 .features{background:#262626;color:#f1f1f1}
 .features h2{color:#fff}
 .features-row{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:10px}
@@ -127,7 +139,7 @@ a{color:inherit}
 .feature .lead{color:#cfcfcf}
 .feature-pic{width:100%;height:180px;object-fit:contain;margin-bottom:8px}
 
-/* ВСЕГДА ПОД РУКОЙ — фикс. высота и более плавный/наглядный переход */
+/* ВСЕГДА ПОД РУКОЙ — плавные переключения, фикс. высота левой колонки */
 .pocket{background:var(--sage)}
 .pocket-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center}
 .pocket-list{min-height:520px}
@@ -196,6 +208,6 @@ a{color:inherit}
   .pocket-grid, .price-grid{grid-template-columns:1fr}
   .step-row{grid-template-columns:1fr; --step-h: 360px}
   .features-row{grid-template-columns:1fr}
-  .examples .ellipse{min-height:700px;border-radius:48px}
+  .examples .ellipse{min-height:640px;border-radius:48px}  /* было 700px */
   .viewer-card{height:70vh}
 }

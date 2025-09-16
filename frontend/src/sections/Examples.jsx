@@ -15,23 +15,27 @@ const DOCS = [
   { id: 5, title: 'Счёт‑фактура', img: d6 },
 ]
 
-// По умолчанию вращение в одну сторону (вперёд)
-const SPEED_DEG_PER_SEC = 18
+/* Скорости */
+const AUTO_SPEED_DEG_PER_SEC = 18      // Автовращение (вне просмотра)
+const TURN_SPEED = 90                  // Обычный доворот (стрелки/переключения) deg/s
+const TURN_SPEED_FAST = 160            // Быстрый доворот (по клику на карточку) deg/s
+
+/* Геометрия карусели */
 const RADIUS = 300
 const CARD_W = 240
 const CARD_H = 160
 
-// нормализация угла в диапазон (-180, 180]
+// нормализация угла в диапазон (-180, 180] — возвращает «кратчайшую» разницу
 function shortestDelta(fromDeg, toDeg) {
   const delta = ((((toDeg - fromDeg) % 360) + 540) % 360) - 180
-  return delta // может быть отрицательным — значит «назад» короче
+  return delta // < 0 — назад ближе, > 0 — вперёд ближе
 }
 
 export default function Examples() {
   const [spin, setSpin] = useState(0)            // текущий угол сцены
-  const [auto, setAuto] = useState(true)         // бесконечное вращение
+  const [auto, setAuto] = useState(true)         // режим бесконечного вращения
   const [viewer, setViewer] = useState(null)     // индекс открытого документа
-  const [viewerKey, setViewerKey] = useState(0)  // перезапуск анимации поп-ин
+  const [viewerKey, setViewerKey] = useState(0)  // чтобы перезапустить анимацию «поп-ин»
 
   const autoRef = useRef(auto)
   const spinRef = useRef(spin)
@@ -41,14 +45,14 @@ export default function Examples() {
   useEffect(() => { autoRef.current = auto }, [auto])
   useEffect(() => { spinRef.current = spin }, [spin])
 
-  // Автовращение (в одну сторону) — только когда просмотр закрыт
+  // Автовращение — только когда просмотр закрыт
   useEffect(() => {
     const tick = (t) => {
       if (!lastRef.current) lastRef.current = t
       const dt = (t - lastRef.current) / 1000
       lastRef.current = t
       if (autoRef.current && viewer === null) {
-        setSpin((s) => s + SPEED_DEG_PER_SEC * dt)
+        setSpin((s) => s + AUTO_SPEED_DEG_PER_SEC * dt)
       }
       rafRef.current = requestAnimationFrame(tick)
     }
@@ -60,12 +64,13 @@ export default function Examples() {
 
   const pause = () => { autoRef.current = false; setAuto(false) }
 
-  // Плавная анимация к target углу
+  // Плавная анимация к целевому углу target
   const animateTo = (target, onDone, fast = false) => {
     const startAngle = spinRef.current
     const distAbs = Math.abs(target - startAngle)
-    const speed = Math.abs(SPEED_DEG_PER_SEC) * (fast ? 2.4 : 1.2)
-    const ease = (p) => 1 - Math.pow(1 - p, 3)
+    const speed = fast ? TURN_SPEED_FAST : TURN_SPEED     // используем отдельные скорости доворотов
+    const ease = (p) => 1 - Math.pow(1 - p, 2.6)          
+
     let start = 0
     const frame = (t) => {
       if (!start) start = t
@@ -78,7 +83,7 @@ export default function Examples() {
     requestAnimationFrame(frame)
   }
 
-  // Поворот к карточке i по кратчайшему пути (вперёд/назад — выбирается автоматически)
+  // Доворот к индексу i по кратчайшему пути
   const rotateToIndexNearest = (i, cb, fast = false) => {
     pause()
     const cur = spinRef.current
@@ -88,7 +93,7 @@ export default function Examples() {
     animateTo(target, cb, fast)
   }
 
-  // Открыть просмотр: докрутить к карточке ближайшим путём и «поп-ин»
+  // Клик по карточке — быстрый доворот по кратчайшему пути и открытие просмотра
   const openViewer = (i) => {
     rotateToIndexNearest(i, () => {
       setViewer(i)
@@ -96,15 +101,14 @@ export default function Examples() {
     }, true)
   }
 
-  // Закрыть просмотр: возобновить бесконечное вращение
+  // Закрытие просмотра — снова включаем бесконечное вращение
   const closeViewer = () => {
     setViewer(null)
     autoRef.current = true
     setAuto(true)
   }
 
-  // Стрелки: переключают карточки, докручивая фон карусели по кратчайшему пути.
-  // Режим «паузa» сохраняется (автовращение НЕ включаем).
+  // Навигация в просмотре — остаёмся в «паузе», докручиваем фон по кратчайшему пути
   const prev = () => {
     setViewer((i) => {
       const n = (i - 1 + DOCS.length) % DOCS.length
@@ -132,7 +136,9 @@ export default function Examples() {
         <div className="ellipse">
           <div className="ellipse-inner">
             <h3 className="ellipse-title">Просто подпиши документ на Сканни.рф</h3>
-            <p className="ellipse-sub">Документы из сервиса выглядят как настоящие сканы с печатью и подписью. Загляни в примеры и убедись сам.</p>
+            <p className="ellipse-sub">
+              Документы из сервиса выглядят как настоящие сканы с печатью и подписью. Загляни в примеры и убедись сам.
+            </p>
 
             <div className="carousel3d">
               <div className="stage" style={{ width: CARD_W, height: CARD_H }}>
@@ -143,7 +149,8 @@ export default function Examples() {
                       key={d.id}
                       className="card3d"
                       style={{
-                        width: CARD_W, height: CARD_H,
+                        width: CARD_W,
+                        height: CARD_H,
                         transform: `rotateY(${angle}deg) translateZ(${RADIUS}px) rotateY(${-angle}deg)`
                       }}
                       onClick={() => openViewer(i)}
