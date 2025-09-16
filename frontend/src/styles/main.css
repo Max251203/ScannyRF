@@ -1,1 +1,95 @@
-/* global styles - fill later */
+:root{
+  --sage:#C9CBA3;
+  --beige:#FFE1A8;
+  --accent:#E26D5C;
+  --wine:#723D46;
+  --brown:#472D30;
+  --text:#222;
+  --muted:#666;
+  --bg:#fff;
+}
+
+/* подключение кастомного жирного шрифта для заголовков */
+@font-face{
+  font-family:"Ermilov";
+  src:url("../assets/fonts/Ermilov-bold.otf") format("opentype");
+  font-weight:700;
+  font-style:normal;
+  font-display:swap;
+}
+
+/* globals */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--text);background:var(--bg);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+img{max-width:100%;display:block}
+a{color:inherit}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+.section{padding:72px 0}
+.section h2{font-family:"Ermilov",inherit;font-size:36px;line-height:1.2;margin:0 0 12px}
+.lead{color:var(--muted)}
+[id]{scroll-margin-top:90px} /* отступ под фиксированную шапку */
+
+/* header */
+.site-header{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid #eee}
+.header-inner{height:64px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.logo-wrap{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:800;letter-spacing:.3px}
+.logo-wrap img{height:28px}
+.nav a{margin:0 10px;text-decoration:none;color:#111;opacity:.9}
+.nav a:hover{opacity:1;color:var(--accent)}
+.actions a{text-decoration:none;margin-left:14px}
+.btn{display:inline-block;background:var(--accent);color:#fff;padding:12px 20px;border-radius:28px;font-weight:800}
+.btn:hover{filter:brightness(.95)}
+
+/* hero */
+.hero{background:var(--sage)}
+.hero-inner{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;padding:64px 0}
+.hero h1{font-family:"Ermilov",inherit;font-size:44px;line-height:1.1;margin:0 0 16px}
+.hero p{font-size:18px;margin:0 0 24px;max-width:560px}
+.hero .art{display:flex;align-items:center;justify-content:center}
+
+/* cards/steps */
+.step-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:8px}
+.card{background:#fff;border:1px solid #eee;border-radius:16px;padding:20px}
+.card h3{margin:0 0 8px;font-size:22px}
+
+/* video block (как работает) */
+.video{aspect-ratio:16/9;border-radius:16px;background:#0002;display:flex;align-items:center;justify-content:center}
+.video .play{width:68px;height:68px;border-radius:50%;background:#0008;color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px}
+
+/* examples circle + marquee */
+.examples .circle-wrap{position:relative;border-radius:32px;background:#fff}
+.circle-cta{background:var(--accent);color:#fff;border-radius:999px;min-height:380px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;margin:0 auto;max-width:720px}
+.circle-cta h3{font-family:"Ermilov";font-size:28px;margin:0 0 10px}
+.marquee{display:flex;gap:12px;overflow:auto;padding:16px;margin-top:18px}
+.doc{flex:0 0 auto;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px 16px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+
+/* pocket block */
+.pocket-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:24px}
+.bullet{list-style:none;padding:0;margin:16px 0 0}
+.bullet li{margin:0 0 16px 0;padding-left:0}
+.bullet h4{margin:0 0 6px 0}
+.pocket-illu{background:var(--beige);border-radius:16px;min-height:260px}
+
+/* pricing */
+.pricing{background:var(--beige)}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
+.price .title{font-weight:800;margin-bottom:6px}
+.price .val{font-size:32px;font-weight:800;color:var(--accent)}
+
+/* footer */
+.site-footer{background:#222;color:#eee;padding:32px 0;margin-top:48px}
+.footer-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.footer-nav{display:flex;gap:16px;flex-wrap:wrap}
+.site-footer a{text-decoration:none;color:#eee;opacity:.85}
+.site-footer a:hover{opacity:1;color:#fff}
+.brand-title{font-weight:800;margin-bottom:6px}
+.copy{opacity:.7;margin-top:12px}
+
+/* responsive */
+@media (max-width: 960px){
+  .hero-inner{grid-template-columns:1fr}
+  .pocket-grid, .price-grid, .step-grid{grid-template-columns:1fr}
+  .circle-cta{border-radius:24px}
+}
