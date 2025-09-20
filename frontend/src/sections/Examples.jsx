@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import d1 from '../assets/images/doc-1.png'
 import d2 from '../assets/images/doc-2.png'
 import d3 from '../assets/images/doc-3.png'
@@ -15,27 +16,22 @@ const DOCS = [
   { id: 5, title: 'Счёт‑фактура', img: d6 },
 ]
 
-/* Скорости */
-const AUTO_SPEED_DEG_PER_SEC = 18      // Автовращение (вне просмотра)
-const TURN_SPEED = 90                  // Обычный доворот (стрелки/переключения) deg/s
-const TURN_SPEED_FAST = 160            // Быстрый доворот (по клику на карточку) deg/s
-
-/* Геометрия карусели */
+const AUTO_SPEED_DEG_PER_SEC = 18
+const TURN_SPEED = 90
+const TURN_SPEED_FAST = 160
 const RADIUS = 300
 const CARD_W = 240
 const CARD_H = 160
 
-// нормализация угла в диапазон (-180, 180] — возвращает «кратчайшую» разницу
 function shortestDelta(fromDeg, toDeg) {
-  const delta = ((((toDeg - fromDeg) % 360) + 540) % 360) - 180
-  return delta // < 0 — назад ближе, > 0 — вперёд ближе
+  return ((((toDeg - fromDeg) % 360) + 540) % 360) - 180
 }
 
 export default function Examples() {
-  const [spin, setSpin] = useState(0)            // текущий угол сцены
-  const [auto, setAuto] = useState(true)         // режим бесконечного вращения
-  const [viewer, setViewer] = useState(null)     // индекс открытого документа
-  const [viewerKey, setViewerKey] = useState(0)  // чтобы перезапустить анимацию «поп-ин»
+  const [spin, setSpin] = useState(0)
+  const [auto, setAuto] = useState(true)
+  const [viewer, setViewer] = useState(null)
+  const [viewerKey, setViewerKey] = useState(0)
 
   const autoRef = useRef(auto)
   const spinRef = useRef(spin)
@@ -45,15 +41,12 @@ export default function Examples() {
   useEffect(() => { autoRef.current = auto }, [auto])
   useEffect(() => { spinRef.current = spin }, [spin])
 
-  // Автовращение — только когда просмотр закрыт
   useEffect(() => {
     const tick = (t) => {
       if (!lastRef.current) lastRef.current = t
       const dt = (t - lastRef.current) / 1000
       lastRef.current = t
-      if (autoRef.current && viewer === null) {
-        setSpin((s) => s + AUTO_SPEED_DEG_PER_SEC * dt)
-      }
+      if (autoRef.current && viewer === null) setSpin(s => s + AUTO_SPEED_DEG_PER_SEC * dt)
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
@@ -62,73 +55,37 @@ export default function Examples() {
 
   const step = useMemo(() => 360 / DOCS.length, [])
 
-  const pause = () => { autoRef.current = false; setAuto(false) }
-
-  // Плавная анимация к целевому углу target
-  const animateTo = (target, onDone, fast = false) => {
+  const animateTo = (target, onDone, fast=false) => {
     const startAngle = spinRef.current
     const distAbs = Math.abs(target - startAngle)
-    const speed = fast ? TURN_SPEED_FAST : TURN_SPEED     // используем отдельные скорости доворотов
-    const ease = (p) => 1 - Math.pow(1 - p, 2.6)          
-
-    let start = 0
-    const frame = (t) => {
-      if (!start) start = t
-      const p = Math.min(1, (t - start) / (distAbs / speed * 1000 || 1))
-      const ang = startAngle + (target - startAngle) * ease(p)
+    const speed = fast ? TURN_SPEED_FAST : TURN_SPEED
+    const ease = (p)=>1-Math.pow(1-p,2.6)
+    let start=0
+    const frame=(t)=>{
+      if(!start) start=t
+      const p = Math.min(1, (t-start)/(distAbs/speed*1000 || 1))
+      const ang = startAngle + (target-startAngle)*ease(p)
       setSpin(ang)
-      if (p < 1) requestAnimationFrame(frame)
-      else { setSpin(target); onDone && onDone() }
+      if(p<1) requestAnimationFrame(frame); else { setSpin(target); onDone && onDone() }
     }
     requestAnimationFrame(frame)
   }
 
-  // Доворот к индексу i по кратчайшему пути
-  const rotateToIndexNearest = (i, cb, fast = false) => {
-    pause()
+  const rotateToIndexNearest = (i, cb, fast=false) => {
+    setAuto(false)
     const cur = spinRef.current
-    const nominal = -i * step
+    const nominal = -i*step
     const d = shortestDelta(cur, nominal)
     const target = cur + d
     animateTo(target, cb, fast)
   }
 
-  // Клик по карточке — быстрый доворот по кратчайшему пути и открытие просмотра
   const openViewer = (i) => {
-    rotateToIndexNearest(i, () => {
-      setViewer(i)
-      setViewerKey((k) => k + 1)
-    }, true)
+    rotateToIndexNearest(i, () => { setViewer(i); setViewerKey(k=>k+1) }, true)
   }
-
-  // Закрытие просмотра — снова включаем бесконечное вращение
-  const closeViewer = () => {
-    setViewer(null)
-    autoRef.current = true
-    setAuto(true)
-  }
-
-  // Навигация в просмотре — остаёмся в «паузе», докручиваем фон по кратчайшему пути
-  const prev = () => {
-    setViewer((i) => {
-      const n = (i - 1 + DOCS.length) % DOCS.length
-      rotateToIndexNearest(n, () => {
-        setViewer(n)
-        setViewerKey((k) => k + 1)
-      }, true)
-      return i
-    })
-  }
-  const next = () => {
-    setViewer((i) => {
-      const n = (i + 1) % DOCS.length
-      rotateToIndexNearest(n, () => {
-        setViewer(n)
-        setViewerKey((k) => k + 1)
-      }, true)
-      return i
-    })
-  }
+  const closeViewer = () => { setViewer(null); setAuto(true) }
+  const prev = () => setViewer(i => { const n=(i-1+DOCS.length)%DOCS.length; rotateToIndexNearest(n, ()=>{setViewer(n);setViewerKey(k=>k+1)}, true); return i })
+  const next = () => setViewer(i => { const n=(i+1)%DOCS.length; rotateToIndexNearest(n, ()=>{setViewer(n);setViewerKey(k=>k+1)}, true); return i })
 
   return (
     <section className="section examples" id="examples">
@@ -136,26 +93,19 @@ export default function Examples() {
         <div className="ellipse">
           <div className="ellipse-inner">
             <h3 className="ellipse-title">Просто подпиши документ на Сканни.рф</h3>
-            <p className="ellipse-sub">
-              Документы из сервиса выглядят как настоящие сканы с печатью и подписью. Загляни в примеры и убедись сам.
-            </p>
+            <p className="ellipse-sub">Документы из сервиса выглядят как настоящие сканы с печатью и подписью. Загляни в примеры и убедись сам.</p>
+            <div className="ellipse-cta">
+              <Link to="/editor" className="btn btn-white">Добавить документ</Link>
+            </div>
 
             <div className="carousel3d">
               <div className="stage" style={{ width: CARD_W, height: CARD_H }}>
                 {DOCS.map((d, i) => {
                   const angle = i * step + spin
                   return (
-                    <button
-                      key={d.id}
-                      className="card3d"
-                      style={{
-                        width: CARD_W,
-                        height: CARD_H,
-                        transform: `rotateY(${angle}deg) translateZ(${RADIUS}px) rotateY(${-angle}deg)`
-                      }}
-                      onClick={() => openViewer(i)}
-                      title={d.title}
-                    >
+                    <button key={d.id} className="card3d"
+                      style={{ width:CARD_W, height:CARD_H, transform:`rotateY(${angle}deg) translateZ(${RADIUS}px) rotateY(${-angle}deg)` }}
+                      onClick={() => openViewer(i)} title={d.title}>
                       <div className="doc-mini">
                         <div className="doc-title">{d.title}</div>
                         <img className="doc-img" src={d.img} alt="" />

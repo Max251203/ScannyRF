@@ -4,13 +4,9 @@ import heroImg from '../assets/images/hero-mascot.png'
 import HowItWorks from '../sections/HowItWorks.jsx'
 import Examples from '../sections/Examples.jsx'
 import Pricing from '../sections/Pricing.jsx'
-
-// «Проще простого»
 import f1 from '../assets/images/feature-1.png'
 import f2 from '../assets/images/feature-2.png'
 import f3 from '../assets/images/feature-3.png'
-
-// «Всегда под рукой» картинки
 import p1 from '../assets/images/pocket-1.png'
 import p2 from '../assets/images/pocket-2.png'
 import p3 from '../assets/images/pocket-3.png'
@@ -32,26 +28,13 @@ export default function Home() {
   }, [loc.state, nav])
 
   const pocketData = [
-    {
-      title: 'Телефон, планшет, компьютер — без разницы',
-      desc: 'Открой в браузере и работай с документами: подписи и печати доступны отовсюду.',
-      img: p1,
-    },
-    {
-      title: 'Надёжное хранилище печатей',
-      desc: 'Загрузите один раз — дальше всё хранится безопасно и открывается в любое время.',
-      img: p2,
-    },
-    {
-      title: 'Не храним ваши документы',
-      desc: 'Для безопасности удаляем любой подписанный документ через 24 часа — без следов.',
-      img: p3,
-    },
+    { title: 'Телефон, планшет, компьютер — без разницы', desc: 'Открой в браузере и работай с документами: подписи и печати доступны отовсюду.', img: p1 },
+    { title: 'Надёжное хранилище печатей', desc: 'Загрузите один раз — дальше всё хранится безопасно и открывается в любое время.', img: p2 },
+    { title: 'Не храним ваши документы', desc: 'Для безопасности удаляем любой подписанный документ через 24 часа — без следов.', img: p3 },
   ]
 
   return (
     <>
-      {/* Hero */}
       <section className="hero">
         <div className="container hero-inner">
           <div className="hero-text">
@@ -65,37 +48,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Простой процесс */}
       <HowItWorks />
-
-      {/* Какой результат */}
       <Examples />
 
-      {/* Проще простого */}
       <section className="section features">
         <div className="container">
           <h2>Проще простого</h2>
           <div className="features-row">
-            <div className="feature">
-              <img className="feature-pic" src={f1} alt="" />
-              <h3>Чистая подпись и печать</h3>
-              <p className="lead">Загрузи снимок с телефона, а сервис аккуратно удалит фон без потери качества и оттенков.</p>
-            </div>
-            <div className="feature">
-              <img className="feature-pic" src={f2} alt="" />
-              <h3>Пропорции под контролем</h3>
-              <p className="lead">Печать автоматически принимает стандартный диаметр, подпись — регулируй и вращай в пару кликов.</p>
-            </div>
-            <div className="feature">
-              <img className="feature-pic" src={f3} alt="" />
-              <h3>Собери всё в один файл</h3>
-              <p className="lead">Подойдут DOCX, JPG/PNG и PDF. Переставляй, удаляй, добавляй — потом скачай одним PDF.</p>
-            </div>
+            <div className="feature"><img className="feature-pic" src={f1} alt="" /><h3>Чистая подпись и печать</h3><p className="lead">Загрузи снимок с телефона, а сервис аккуратно удалит фон без потери качества и оттенков.</p></div>
+            <div className="feature"><img className="feature-pic" src={f2} alt="" /><h3>Пропорции под контролем</h3><p className="lead">Печать автоматически принимает стандартный диаметр, подпись — регулируй и вращай в пару кликов.</p></div>
+            <div className="feature"><img className="feature-pic" src={f3} alt="" /><h3>Собери всё в один файл</h3><p className="lead">Подойдут DOCX, JPG/PNG и PDF. Переставляй, удаляй, добавляй — потом скачай одним PDF.</p></div>
           </div>
         </div>
       </section>
 
-      {/* Всегда под рукой */}
       <section className="section pocket">
         <div className="container pocket-grid">
           <div className="pocket-list">
@@ -104,7 +70,7 @@ export default function Home() {
               {pocketData.map((it, i) => (
                 <li key={i} className={i === activePocket ? 'active' : ''}>
                   <button className="num-item" onClick={() => setActivePocket(i)}>
-                    <span className="num">{i + 1}</span>
+                    <span className="badge-num">{i + 1}</span>
                     <span className="title">{it.title}</span>
                   </button>
                   <div className="num-desc" aria-hidden={i !== activePocket}>
@@ -115,13 +81,11 @@ export default function Home() {
             </ul>
           </div>
           <div className="pocket-illu">
-            {/* ключ — чтобы срабатывать плавное появление */}
             <img key={activePocket} className="fade-in" src={pocketData[activePocket].img} alt="" />
           </div>
         </div>
       </section>
 
-      {/* Цены */}
       <Pricing />
     </>
   )
