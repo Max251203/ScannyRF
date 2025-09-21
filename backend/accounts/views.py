@@ -7,16 +7,17 @@ from rest_framework import permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from google.oauth2 import id_token
 from google.auth.transport import requests as greq
+from rest_framework import permissions
 
 from .models import User, PasswordResetCode
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
-    ProfileUpdateSerializer, PasswordRequestSerializer, PasswordConfirmSerializer
+    ProfileUpdateSerializer
 )
 
 def tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-    return {'access': str(refresh.access_token), 'refresh': str(refresh)}
+    ref = RefreshToken.for_user(user)
+    return {'access': str(ref.access_token), 'refresh': str(ref)}
 
 def ensure_username(base):
     base = (base or 'user').split('@')[0]
@@ -24,6 +25,28 @@ def ensure_username(base):
     while User.objects.filter(username=u).exists():
         i += 1; u = f"{base}{i}"
     return u
+
+class ApiRootView(APIView):
+    permission_classes = [permissions.AllowAny]
+    def get(self, request):
+        base = request.build_absolute_uri('/api/')
+        return Response({
+            "status": "ok",
+            "endpoints": {
+                "register":  base + "auth/register/",
+                "login":     base + "auth/login/",
+                "me":        base + "auth/me/",
+                "profile":   base + "auth/profile/",
+                "pwd_code":  base + "auth/password/request-code/",
+                "pwd_confirm": base + "auth/password/confirm/",
+                "google":    base + "auth/google/",
+                "facebook":  base + "auth/facebook/",
+                "vk":        base + "auth/vk/",
+                "users_admin": base + "admin/users/",
+                "faq":       base + "cms/faq/",
+                "legal":     base + "cms/legal/",
+            }
+        })
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -58,40 +81,40 @@ class ProfileUpdateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def post(self, request):
         s = ProfileUpdateSerializer(data=request.data); s.is_valid(raise_exception=True)
-        user = request.user
-        if s.validated_data.get('email'): user.email = s.validated_data['email'].lower()
-        if 'username' in s.validated_data: user.username = s.validated_data['username'] or user.username
-        if s.validated_data.get('remove_avatar'): user.avatar_bin = None; user.avatar_mime = None
+        u = request.user
+        if s.validated_data.get('email'): u.email = s.validated_data['email'].lower()
+        if 'username' in s.validated_data: u.username = s.validated_data['username'] or u.username
+        if s.validated_data.get('remove_avatar'): u.avatar_bin = None; u.avatar_mime = None
         if 'avatar' in request.FILES:
-            f = request.FILES['avatar']; user.avatar_bin = f.read(); user.avatar_mime = f.content_type or 'image/png'
-        user.save()
-        return Response(UserSerializer(user).data)
+            f = request.FILES['avatar']; u.avatar_bin = f.read(); u.avatar_mime = f.content_type or 'image/png'
+        u.save()
+        return Response(UserSerializer(u).data)
 
 class RequestResetCodeView(APIView):
     permission_classes = [permissions.AllowAny]
     def post(self, request):
-        s = PasswordRequestSerializer(data=request.data); s.is_valid(raise_exception=True)
-        email = s.validated_data['email'].lower()
-        user = User.objects.filter(email__iexact=email).first()
-        if not user: return Response({'detail':'Пользователь не найден'}, status=404)
+        email = (request.data.get('email') or '').lower()
+        u = User.objects.filter(email__iexact=email).first()
+        if not u: return Response({'detail':'Пользователь не найден'}, status=404)
         code = f"{random.randint(0,999999):06d}"
-        PasswordResetCode.objects.create(user=user, code=code)
+        PasswordResetCode.objects.create(user=u, code=code)
         send_mail('Код для смены пароля', f'Ваш код: {code}', 'no-reply@scannyrf', [email], fail_silently=True)
-        return Response({'ok':True})
+        return Response({'ok': True})
 
 class ConfirmResetCodeView(APIView):
     permission_classes = [permissions.AllowAny]
     def post(self, request):
-        s = PasswordConfirmSerializer(data=request.data); s.is_valid(raise_exception=True)
-        email = s.validated_data['email'].lower(); code = s.validated_data['code']; new_password = s.validated_data['new_password']
-        user = User.objects.filter(email__iexact=email).first()
-        if not user: return Response({'detail':'Пользователь не найден'}, status=404)
-        rec = PasswordResetCode.objects.filter(user=user, code=code, used=False).order_by('-created_at').first()
+        email = (request.data.get('email') or '').lower()
+        code = request.data.get('code')
+        new_password = request.data.get('new_password')
+        u = User.objects.filter(email__iexact=email).first()
+        if not u: return Response({'detail':'Пользователь не найден'}, status=404)
+        rec = PasswordResetCode.objects.filter(user=u, code=code, used=False).order_by('-created_at').first()
         if not rec or not rec.is_valid(): return Response({'detail':'Код недействителен'}, status=400)
-        rec.used = True; rec.save(); user.set_password(new_password); user.save()
-        return Response({'ok':True})
+        rec.used = True; rec.save(); u.set_password(new_password); u.save()
+        return Response({'ok': True})
 
-# --- Быстрый вход: Google (id_token)
+# Быстрые входы (как были) — Google/Facebook/VK
 class GoogleAuthView(APIView):
     permission_classes = [permissions.AllowAny]
     def post(self, request):
@@ -101,15 +124,12 @@ class GoogleAuthView(APIView):
             info = id_token.verify_oauth2_token(token, greq.Request(), client_id)
             email = (info.get('email') or '').lower(); name = info.get('name') or ''
             if not email: return Response({'detail':'Не удалось подтвердить email Google'}, status=400)
-            user = User.objects.filter(email__iexact=email).first()
-            if not user:
-                user = User.objects.create(username=ensure_username(email or name), email=email)
-                user.set_unusable_password(); user.save()
-            return Response({'user': UserSerializer(user).data, **tokens_for_user(user)})
+            u = User.objects.filter(email__iexact=email).first()
+            if not u: u = User.objects.create(username=ensure_username(email or name), email=email); u.set_unusable_password(); u.save()
+            return Response({'user': UserSerializer(u).data, **tokens_for_user(u)})
         except Exception:
             return Response({'detail':'Идентификатор Google недействителен'}, status=400)
 
-# --- Быстрый вход: Facebook (access_token)
 class FacebookAuthView(APIView):
     permission_classes = [permissions.AllowAny]
     def post(self, request):
@@ -119,21 +139,18 @@ class FacebookAuthView(APIView):
             return Response({'detail':'Отсутствуют параметры Facebook'}, status=400)
         try:
             dbg = requests.get("https://graph.facebook.com/debug_token",
-                               params={'input_token':token, 'access_token':f"{app_id}|{app_secret}"}, timeout=10).json()
+                               params={'input_token':token,'access_token':f"{app_id}|{app_secret}"}, timeout=10).json()
             if not dbg.get('data',{}).get('is_valid'): return Response({'detail':'Токен Facebook недействителен'}, status=400)
             me = requests.get("https://graph.facebook.com/me",
                               params={'fields':'id,name,email','access_token':token}, timeout=10).json()
             fid = me.get('id'); name = me.get('name') or ''; email = (me.get('email') or f'fb_{fid}@facebook.local').lower()
             if not fid: return Response({'detail':'Не удалось получить профиль Facebook'}, status=400)
-            user = User.objects.filter(email__iexact=email).first()
-            if not user:
-                user = User.objects.create(username=ensure_username(name or email), email=email)
-                user.set_unusable_password(); user.save()
-            return Response({'user': UserSerializer(user).data, **tokens_for_user(user)})
+            u = User.objects.filter(email__iexact=email).first()
+            if not u: u = User.objects.create(username=ensure_username(name or email), email=email); u.set_unusable_password(); u.save()
+            return Response({'user': UserSerializer(u).data, **tokens_for_user(u)})
         except Exception:
             return Response({'detail':'Ошибка Facebook'}, status=400)
 
-# --- Быстрый вход: VK (access_token + опционально email)
 class VkAuthView(APIView):
     permission_classes = [permissions.AllowAny]
     def post(self, request):
@@ -148,10 +165,66 @@ class VkAuthView(APIView):
             if not vid: return Response({'detail':'Не удалось получить профиль VK'}, status=400)
             if not email: email = f'vk_{vid}@vk.local'
             name = f"{first} {last}".strip()
-            user = User.objects.filter(email__iexact=email).first()
-            if not user:
-                user = User.objects.create(username=ensure_username(name or email), email=email)
-                user.set_unusable_password(); user.save()
-            return Response({'user': UserSerializer(user).data, **tokens_for_user(user)})
+            u = User.objects.filter(email__iexact=email).first()
+            if not u: u = User.objects.create(username=ensure_username(name or email), email=email); u.set_unusable_password(); u.save()
+            return Response({'user': UserSerializer(u).data, **tokens_for_user(u)})
         except Exception:
             return Response({'detail':'Ошибка VK'}, status=400)
+
+# Админ — CRUD пользователей
+class AdminUsersListCreate(APIView):
+    permission_classes = [permissions.IsAdminUser]
+    def get(self, request):
+        qs = User.objects.all().order_by('id')
+        return Response([UserSerializer(u).data for u in qs])
+    def post(self, request):
+        email = (request.data.get('email') or '').lower()
+        username = request.data.get('username') or ensure_username(email)
+        password = request.data.get('password') or ''
+        is_staff = bool(request.data.get('is_staff'))
+        if not email: return Response({'detail':'email обязателен'}, status=400)
+        if User.objects.filter(Q(email=email)|Q(username=username)).exists():
+            return Response({'detail':'Пользователь уже существует'}, status=400)
+        u = User.objects.create(username=username, email=email, is_staff=is_staff)
+        if password: u.set_password(password)
+        else: u.set_unusable_password()
+        u.save()
+        return Response(UserSerializer(u).data, status=201)
+
+class AdminUserDetail(APIView):
+    permission_classes = [permissions.IsAdminUser]
+    def get_obj(self, pk):
+        return User.objects.get(pk=pk)
+    def get(self, request, pk):
+        return Response(UserSerializer(self.get_obj(pk)).data)
+    def put(self, request, pk):
+        u = self.get_obj(pk)
+        email = (request.data.get('email') or u.email).lower()
+        username = request.data.get('username') or u.username
+        is_staff = bool(request.data.get('is_staff')) if 'is_staff' in request.data else u.is_staff
+        if User.objects.exclude(pk=u.pk).filter(Q(email=email)|Q(username=username)).exists():
+            return Response({'detail':'email/логин заняты'}, status=400)
+        u.email = email; u.username = username; u.is_staff = is_staff
+        if 'password' in request.data and request.data.get('password'):
+            u.set_password(request.data['password'])
+        u.save()
+        return Response(UserSerializer(u).data)
+    def delete(self, request, pk):
+        self.get_obj(pk).delete()
+        return Response(status=204)
+
+
+
+class PasswordChangeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request):
+        old_pwd = request.data.get('old_password') or ''
+        new_pwd = request.data.get('new_password') or ''
+        if not old_pwd or not new_pwd:
+            return Response({'detail':'Укажите старый и новый пароль'}, status=400)
+        u = request.user
+        if not u.check_password(old_pwd):
+            return Response({'detail':'Неверный старый пароль'}, status=400)
+        u.set_password(new_pwd)
+        u.save()
+        return Response({'ok': True})

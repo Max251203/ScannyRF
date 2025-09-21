@@ -1,15 +1,15 @@
-import { Outlet } from 'react-router-dom'
 import Header from './Header.jsx'
 import Footer from './Footer.jsx'
+import ToastHost from './Toast.jsx'
+import { Outlet } from 'react-router-dom'
 
-export default function Layout() {
+export default function Layout(){
   return (
     <div className="layout">
-      <Header />
-      <main>
-        <Outlet />
-      </main>
-      <Footer />
+      <Header/>
+      <main><Outlet/></main>
+      <Footer/>
+      <ToastHost/>
     </div>
   )
 }

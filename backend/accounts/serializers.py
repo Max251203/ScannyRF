@@ -4,9 +4,12 @@ from .models import User
 
 class UserSerializer(serializers.ModelSerializer):
     avatar_url = serializers.SerializerMethodField()
+    is_staff = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = User
-        fields = ('id','username','email','avatar_url')
+        fields = ('id','username','email','avatar_url','is_staff')
+
     def get_avatar_url(self, obj):
         if obj.avatar_bin and obj.avatar_mime:
             b64 = base64.b64encode(obj.avatar_bin).decode('ascii')
@@ -27,11 +30,3 @@ class ProfileUpdateSerializer(serializers.Serializer):
     username = serializers.CharField(allow_blank=True, required=False)
     remove_avatar = serializers.BooleanField(required=False)
     avatar = serializers.ImageField(required=False)
-
-class PasswordRequestSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-
-class PasswordConfirmSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    code = serializers.CharField(max_length=6)
-    new_password = serializers.CharField(min_length=6)
