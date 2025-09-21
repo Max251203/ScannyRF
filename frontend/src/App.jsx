@@ -7,6 +7,7 @@ import Editor from './pages/Editor.jsx'
 import Calculators from './pages/Calculators.jsx'
 import Help from './pages/Help.jsx'
 import Profile from './pages/Profile.jsx'
+import OAuthCatch from './pages/OAuthCatch.jsx'
 
 export default function App() {
   return (
@@ -18,7 +19,9 @@ export default function App() {
         <Route path="/editor" element={<Editor />} />
         <Route path="/calculators" element={<Calculators />} />
         <Route path="/help" element={<Help />} />
+        <Route path="/help/:slug" element={<Help />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/oauth" element={<OAuthCatch />} />
       </Route>
     </Routes>
   )
