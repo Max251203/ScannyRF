@@ -1,23 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import ModalEditor from '../components/ModalEditor.jsx'
 import { toast } from '../components/Toast.jsx'
+import { AuthAPI } from '../api'
 import iconAdd from '../assets/icons/add.png'
 import iconEdit from '../assets/icons/edit.png'
 import iconDelete from '../assets/icons/delete.png'
 
-const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
-const authHeaders = () => {
-  const t = localStorage.getItem('access') || ''
-  return t ? { Authorization: `Bearer ${t}` } : {}
+function htmlToText(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html || ''
+  return (div.textContent || div.innerText || '').trim()
 }
 
 export default function Help() {
+  const nav = useNavigate()
+  const { id } = useParams()
+
   const [q, setQ] = useState('')
   const [items, setItems] = useState([])
   const [admin, setAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editRow, setEditRow] = useState(null)
+  const [detail, setDetail] = useState(null)
 
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem('user') || 'null')
@@ -25,10 +31,18 @@ export default function Help() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (id) {
+      fetch(AuthAPI.getApiBase() + `/cms/faq/${id}/`).then(r => r.ok ? r.json() : null).then(d => setDetail(d || null))
+    } else {
+      setDetail(null)
+    }
+  }, [id])
+
   const load = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API}/cms/faq/`)
+      const r = await fetch(AuthAPI.getApiBase() + '/cms/faq/')
       if (!r.ok) { toast('Не удалось загрузить вопросы','error'); return }
       const d = await r.json()
       setItems(Array.isArray(d) ? d : [])
@@ -45,21 +59,66 @@ export default function Help() {
   const openEdit = (row) => { setEditRow(row); setEditorOpen(true) }
   const remove = async (row) => {
     if (!confirm('Удалить вопрос?')) return
-    const r = await fetch(`${API}/cms/faq/${row.id}/`, { method:'DELETE', headers:{...authHeaders()} })
-    if (!r.ok) { toast('Не удалось удалить','error'); return }
-    toast('Удалено','success'); load()
+    try {
+      await AuthAPI.authed(`/cms/faq/${row.id}/`, { method: 'DELETE' })
+      toast('Удалено','success'); load(); if (detail?.id === row.id) nav('/help')
+    } catch (e) {
+      toast(e.message || 'Не удалось удалить','error')
+    }
   }
+
   const onSave = async ({ title, html }) => {
-    const url = editRow ? `${API}/cms/faq/${editRow.id}/` : `${API}/cms/faq/`
-    const method = editRow ? 'PUT':'POST'
-    const r = await fetch(url, {
-      method, headers:{'Content-Type':'application/json', ...authHeaders()},
-      body: JSON.stringify({ title, body: html })
-    })
-    if (!r.ok) { toast('Ошибка сохранения','error'); return }
-    toast('Сохранено','success')
-    setEditorOpen(false)
-    load()
+    try {
+      const payload = { title: title.trim(), body: html }
+      if (!payload.title || !payload.body) { toast('Заполните заголовок и текст','error'); return }
+      const url = editRow ? `/cms/faq/${editRow.id}/` : `/cms/faq/`
+      const method = editRow ? 'PUT':'POST'
+      await AuthAPI.authed(url, {
+        method,
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      })
+      toast('Сохранено','success')
+      setEditorOpen(false)
+      load()
+    } catch (e) {
+      toast(e.message || 'Ошибка сохранения','error')
+    }
+  }
+
+  if (detail) {
+    return (
+      <div className="help-page">
+        <div className="container">
+          <div className="help-head">
+            <button className="help-back" onClick={()=>nav('/help')}>← Назад к вопросам</button>
+            {admin && (
+              <div style={{display:'flex', gap:8}}>
+                <button className="icon-btn" title="Редактировать" onClick={()=>openEdit(detail)}>
+                  <img src={iconEdit} alt="" style={{width:18,height:18}}/>
+                </button>
+                <button className="icon-btn" title="Удалить" onClick={()=>remove(detail)}>
+                  <img src={iconDelete} alt="" style={{width:18,height:18}}/>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <h1 className="help-article-title">{detail.title}</h1>
+          <div className="help-article-body" dangerouslySetInnerHTML={{__html: detail.body || ''}} />
+        </div>
+
+        <ModalEditor
+          open={editorOpen}
+          onClose={()=>setEditorOpen(false)}
+          title="Редактирование вопроса"
+          initialTitle={editRow?.title || ''}
+          initialHTML={editRow?.body || ''}
+          onSave={onSave}
+          requireTitle={true}
+        />
+      </div>
+    )
   }
 
   return (
@@ -77,22 +136,26 @@ export default function Help() {
 
         <div className="help-grid">
           {loading && <div>Загрузка…</div>}
-          {!loading && filtered.map(q => (
-            <div className="help-card" key={q.id}>
-              <div className="help-card-title">{q.title}</div>
-              <div className="help-card-go" aria-hidden="true">›</div>
-              {admin && (
-                <div style={{position:'absolute', right:52, bottom:12, display:'flex', gap:8}}>
-                  <button className="icon-btn" title="Редактировать" onClick={()=>openEdit(q)}>
-                    <img src={iconEdit} alt="" style={{width:18,height:18}}/>
-                  </button>
-                  <button className="icon-btn" title="Удалить" onClick={()=>remove(q)}>
-                    <img src={iconDelete} alt="" style={{width:18,height:18}}/>
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+          {!loading && filtered.map(row => {
+            const text = htmlToText(row.body || '')
+            return (
+              <div className="help-card" key={row.id} onClick={()=>nav(`/help/${row.id}`)} title="Открыть">
+                <div className="help-card-title">{row.title}</div>
+                <div className="help-card-text">{text}</div>
+                <div className="help-card-go" aria-hidden="true">›</div>
+                {admin && (
+                  <div style={{position:'absolute', right:52, bottom:12, display:'flex', gap:8}}>
+                    <button className="icon-btn" title="Редактировать" onClick={(e)=>{e.stopPropagation(); openEdit(row)}}>
+                      <img src={iconEdit} alt="" style={{width:18,height:18}}/>
+                    </button>
+                    <button className="icon-btn" title="Удалить" onClick={(e)=>{e.stopPropagation(); remove(row)}}>
+                      <img src={iconDelete} alt="" style={{width:18,height:18}}/>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
           {!loading && filtered.length===0 && <div className="help-empty">Ничего не найдено</div>}
         </div>
       </div>
@@ -104,6 +167,7 @@ export default function Help() {
         initialTitle={editRow?.title || ''}
         initialHTML={editRow?.body || ''}
         onSave={onSave}
+        requireTitle={true}
       />
     </div>
   )

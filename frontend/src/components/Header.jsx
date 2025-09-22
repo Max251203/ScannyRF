@@ -18,7 +18,7 @@ export default function Header() {
   const goToSection=(id)=>(e)=>{ e.preventDefault(); if(loc.pathname!=='/') nav('/',{state:{scrollTo:id}}); else scrollTo(id) }
   const logout=()=>{ AuthAPI.logout(); setUser(null); if(loc.pathname.startsWith('/profile')) nav('/') }
 
-  const label=user?.username||user?.email||'Профиль'
+  const label = (user?.username && user.username.trim()) ? user.username.trim() : (user?.email || 'Профиль')
   const avatarSrc=user?.avatar_url||avatarDefault
 
   return (

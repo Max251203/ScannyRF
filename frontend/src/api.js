@@ -5,9 +5,11 @@ function authHeader() {
   const access = localStorage.getItem('access');
   return access ? { Authorization: `Bearer ${access}` } : {};
 }
+
 function parseJsonSafe(text) {
   try { return text ? JSON.parse(text) : {}; } catch { return {}; }
 }
+
 function buildError(text) {
   const data = parseJsonSafe(text);
   if (data.detail) return new Error(data.detail);
@@ -22,17 +24,69 @@ function buildError(text) {
   }
   return new Error('Ошибка запроса');
 }
-async function request(path, options = {}) {
-  const url = API + path;
-  if (import.meta.env.DEV) console.debug('[API]', options.method || 'GET', url);
+
+function isTokenProblem(text) {
+  const data = parseJsonSafe(text);
+  if (!data) return false;
+  if (data.code === 'token_not_valid') return true;
+  if (data.detail && /token/i.test(String(data.detail)) && /expired|not valid/i.test(String(data.detail))) return true;
+  if (Array.isArray(data.messages)) return true;
+  return false;
+}
+
+async function refreshAccessToken() {
+  const refresh = localStorage.getItem('refresh');
+  if (!refresh) return null;
+  try {
+    const res = await fetch(API + '/auth/token/refresh/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh })
+    });
+    const text = await res.text();
+    if (!res.ok) return null;
+    const data = parseJsonSafe(text);
+    if (data && data.access) {
+      localStorage.setItem('access', data.access);
+      return data.access;
+    }
+  } catch {}
+  return null;
+}
+
+async function request(path, options = {}, _retried = false) {
+  const url = path.startsWith('http') ? path : (API + path);
   const res = await fetch(url, options);
   const text = await res.text();
+
+  if (res.status === 401 && !_retried && isTokenProblem(text)) {
+    // пробуем обновить access-токен и повторить запрос
+    const newAccess = await refreshAccessToken();
+    if (newAccess) {
+      const headers = { ...(options.headers || {}), Authorization: `Bearer ${newAccess}` };
+      const res2 = await fetch(url, { ...options, headers });
+      const text2 = await res2.text();
+      if (!res2.ok) throw buildError(text2);
+      return parseJsonSafe(text2);
+    }
+  }
+
   if (!res.ok) throw buildError(text);
   return parseJsonSafe(text);
 }
 
+async function requestAuthed(path, options = {}) {
+  const headers = { ...(options.headers || {}), ...authHeader() };
+  return request(path, { ...options, headers });
+}
+
 export const AuthAPI = {
   getApiBase() { return API; },
+
+  // универсальный авт. запрос с JWT и автообновлением токена
+  authed(path, options = {}) {
+    return requestAuthed(path, options);
+  },
 
   async login(identifier, password) {
     const data = await request('/auth/login/', {
@@ -96,18 +150,14 @@ export const AuthAPI = {
   },
 
   me() {
-    return request('/auth/me/', { headers: { ...authHeader() } });
+    return requestAuthed('/auth/me/');
   },
 
   async updateProfile(formData) {
-    const res = await fetch(API + '/auth/profile/', {
+    const data = await requestAuthed('/auth/profile/', {
       method: 'POST',
-      headers: { ...authHeader() }, // FormData — без Content-Type
-      body: formData
+      body: formData // без Content-Type
     });
-    const text = await res.text();
-    if (!res.ok) throw buildError(text);
-    const data = parseJsonSafe(text);
     localStorage.setItem('user', JSON.stringify(data));
     return data;
   },
@@ -119,18 +169,24 @@ export const AuthAPI = {
     });
   },
 
-  confirmCode(email, code, new_password) {
-    return request('/auth/password/confirm/', {
+  async confirmCode(email, code, new_password) {
+    const data = await request('/auth/password/confirm/', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, code, new_password })
     });
+    if (data.access) localStorage.setItem('access', data.access);
+    if (data.refresh) localStorage.setItem('refresh', data.refresh);
+    return data;
   },
 
-  changePassword(old_password, new_password) {
-    return request('/auth/password/change/', {
+  async changePassword(old_password, new_password) {
+    const data = await requestAuthed('/auth/password/change/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ old_password, new_password })
     });
+    if (data.access) localStorage.setItem('access', data.access);
+    if (data.refresh) localStorage.setItem('refresh', data.refresh);
+    return data;
   },
 };

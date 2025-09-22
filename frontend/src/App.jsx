@@ -19,7 +19,7 @@ export default function App() {
         <Route path="/editor" element={<Editor />} />
         <Route path="/calculators" element={<Calculators />} />
         <Route path="/help" element={<Help />} />
-        <Route path="/help/:slug" element={<Help />} />
+        <Route path="/help/:id" element={<Help />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/oauth" element={<OAuthCatch />} />
       </Route>

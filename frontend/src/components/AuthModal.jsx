@@ -47,12 +47,16 @@ export default function AuthModal({ open, onClose, onSuccess }) {
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [rpwd, setRpwd] = useState('')
-  const [avatar, setAvatar] = useState(null)
+  const [avatar, setAvatar] = useState(null) // File | null
+  const fileRef = useRef(null)
 
   useEffect(() => { if (!open) reset() }, [open])
-  const reset = () => { setMode('login'); setOk(false); setLoading(false); setError(''); setIdn(''); setPwd(''); setEmail(''); setUsername(''); setRpwd(''); setAvatar(null) }
+  const reset = () => {
+    setMode('login'); setOk(false); setLoading(false); setError(''); setIdn(''); setPwd(''); setEmail(''); setUsername(''); setRpwd(''); setAvatar(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
 
-  // Google GSI (рисуем, если есть client id)
+  // Google GSI
   const googleBtnRef = useRef(null)
   useEffect(() => {
     if (!open) return
@@ -77,7 +81,7 @@ export default function AuthModal({ open, onClose, onSuccess }) {
     } else init()
   }, [open, onClose, onSuccess])
 
-  const canLogin = ok && idn.trim().length > 0 && pwd.trim().length >= 1 && !loading
+  const canLogin = idn.trim().length > 0 && pwd.trim().length >= 1 && !loading
   const canRegister = ok && emailRx.test(email.trim()) && rpwd.trim().length >= 6 && !loading
 
   const submitLogin = async () => {
@@ -96,9 +100,27 @@ export default function AuthModal({ open, onClose, onSuccess }) {
     try {
       setLoading(true); setError('')
       const u = await AuthAPI.register(email.trim(), username.trim(), rpwd)
-      if (avatar) { const fd = new FormData(); fd.append('avatar', avatar); await AuthAPI.updateProfile(fd) }
+      if (avatar) {
+        const fd = new FormData()
+        fd.append('avatar', avatar)
+        await AuthAPI.updateProfile(fd)
+      }
       onSuccess?.(u); onClose?.()
-    } catch (e) { setError(e.message) } finally { setLoading(false) }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const onPickAvatar = (e) => {
+    const f = e.target.files?.[0] || null
+    setAvatar(f)
+    e.target.value = ''
+  }
+  const clearAvatar = () => {
+    setAvatar(null)
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   if (!open) return null
@@ -114,13 +136,6 @@ export default function AuthModal({ open, onClose, onSuccess }) {
             <div className="form-row"><input placeholder="Логин или e‑mail" value={idn} onChange={e => setIdn(e.target.value)} /></div>
             <div className="form-row"><PasswordField id="login-password" placeholder="Пароль" value={pwd} onChange={e => setPwd(e.target.value)} /></div>
 
-            <div className="form-row agree">
-              <label className="agree-line">
-                <input type="checkbox" checked={ok} onChange={e => setOk(e.target.checked)} />
-                <span className="agree-text">Принимаю условия <Link to="/terms" onClick={onClose}>Пользовательского соглашения</Link> и <Link to="/privacy" onClick={onClose}>Политики конфиденциальности</Link></span>
-              </label>
-            </div>
-
             {error && <div className="form-row form-error">{error}</div>}
 
             <div className="form-row two">
@@ -132,15 +147,20 @@ export default function AuthModal({ open, onClose, onSuccess }) {
           </>
         ) : (
           <>
-            <div className="avatar-uploader hint" onClick={() => document.getElementById('reg-avatar').click()}>
+            <div className="avatar-uploader hint" onClick={() => fileRef.current?.click()}>
               {avatar
                 ? <img src={URL.createObjectURL(avatar)} alt="" />
                 : <div className="avatar-placeholder">
                     <img src={camIcon} alt="" className="cam-img" />
                     <span>Добавить фото</span>
                   </div>}
-              <input id="reg-avatar" type="file" accept="image/*" hidden onChange={e => setAvatar(e.target.files?.[0] || null)} />
+              <input ref={fileRef} id="reg-avatar" type="file" accept="image/*" hidden onChange={onPickAvatar} />
             </div>
+            {avatar && (
+              <div className="avatar-actions" style={{textAlign:'center', marginTop: -6}}>
+                <button className="link-btn" onClick={clearAvatar}>Удалить фото</button>
+              </div>
+            )}
 
             <div className="form-row"><input placeholder="E‑mail" value={email} onChange={e => setEmail(e.target.value)} /></div>
             <div className="form-row"><input placeholder="Логин (необязательно)" value={username} onChange={e => setUsername(e.target.value)} /></div>
@@ -167,7 +187,6 @@ export default function AuthModal({ open, onClose, onSuccess }) {
         <div className="divider"><span>или</span></div>
 
         <div className="social-row socials-fixed">
-          {/* Крупные заглушки (иконка внутри тянется на 100%) */}
           <button className="soc soc-lg" type="button" title="Google" onClick={() => alert('Скоро')}>
             <img src={iconG} alt="" />
           </button>
@@ -178,7 +197,6 @@ export default function AuthModal({ open, onClose, onSuccess }) {
             <img src={iconVK} alt="" />
           </button>
 
-          {/* Живая кнопка GSI (рисуется только если указан VITE_GOOGLE_CLIENT_ID) */}
           <div ref={googleBtnRef} className="soc-google-btn" />
         </div>
       </div>

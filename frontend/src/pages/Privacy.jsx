@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import ModalEditor from '../components/ModalEditor.jsx'
 import { toast } from '../components/Toast.jsx'
-
-const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
-const authHeaders = () => { const t=localStorage.getItem('access')||''; return t?{Authorization:`Bearer ${t}`}:{ } }
+import { AuthAPI } from '../api'
 
 export default function Privacy(){
   const [data,setData]=useState(null)
@@ -11,15 +9,18 @@ export default function Privacy(){
   const [admin,setAdmin]=useState(false)
 
   useEffect(()=>{ const u=JSON.parse(localStorage.getItem('user')||'null'); setAdmin(!!u?.is_staff); load() },[])
-  const load=async()=>{ const r=await fetch(`${API}/cms/legal/`); const d=await r.json(); const page=Array.isArray(d)? d.find(x=>x.slug==='privacy'):null; setData(page||null) }
+  const load=async()=>{ const d=await fetch(AuthAPI.getApiBase()+'/cms/legal/').then(r=>r.json()); const page=Array.isArray(d)? d.find(x=>x.slug==='privacy'):null; setData(page||null) }
 
   const onSave=async({title,html})=>{
-    const payload={slug:'privacy', title: title||'Политика конфиденциальности', body: html}
-    const url = data ? `${API}/cms/legal/${data.id}/` : `${API}/cms/legal/`
+    const payload={slug:'privacy', title: title || (data?.title || 'Политика конфиденциальности'), body: html}
+    const url = data ? `/cms/legal/${data.id}/` : `/cms/legal/`
     const method = data ? 'PUT':'POST'
-    const r=await fetch(url,{method,headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify(payload)})
-    if(!r.ok){ toast('Ошибка сохранения','error'); return }
-    toast('Сохранено','success'); setOpen(false); load()
+    try {
+      await AuthAPI.authed(url,{ method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      toast('Сохранено','success'); setOpen(false); load()
+    } catch (e) {
+      toast(e.message || 'Ошибка сохранения','error')
+    }
   }
 
   return (
@@ -28,7 +29,16 @@ export default function Privacy(){
       {admin && <button className="btn btn-lite" onClick={()=>setOpen(true)}><span className="label">Редактировать</span></button>}
       <div dangerouslySetInnerHTML={{__html: data?.body || ''}}/>
       {!data && <p>Страница пуста.</p>}
-      <ModalEditor open={open} onClose={()=>setOpen(false)} title="Редактирование" initialTitle={data?.title||''} initialHTML={data?.body||''} onSave={onSave}/>
+      <ModalEditor
+        open={open}
+        onClose={()=>setOpen(false)}
+        title="Редактирование"
+        initialTitle={data?.title||''}
+        initialHTML={data?.body||''}
+        onSave={onSave}
+        protectTitle={true}
+        requireTitle={false}
+      />
     </div>
   )
 }
